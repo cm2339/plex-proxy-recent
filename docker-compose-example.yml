@@ -1,0 +1,27 @@
+services:
+  plex-proxy:
+    image: cm2339/plex-proxy-recent:latest
+    container_name: plex-proxy
+    restart: unless-stopped
+    environment:
+      - PLEX_URL=http://YOUR_PLEX_IP:32400
+      - PLEX_TOKEN=YOUR_PLEX_TOKEN
+      - LIMIT=10
+      - SECTIONS=1,2,3        # comma-separated section IDs
+      #- DEBUG_SECRET=         # optional, enables debug endpoints
+    ports:
+      - "3051:3001"
+    networks:
+      - homepage_net
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+
+networks:
+  homepage_net:
+    external: true
+    name: homepage_default    # match your Homepage network name
