@@ -12,6 +12,7 @@ const SECTIONS = process.env.SECTIONS
 // Feature flags
 const PLEX_CLICKTHROUGH = (process.env.PLEX_CLICKTHROUGH || "false").toLowerCase() === "true";
 const SHOW_ON_DECK      = (process.env.SHOW_ON_DECK      || "false").toLowerCase() === "true";
+const NEW_BADGE_HOURS   = parseInt(process.env.NEW_BADGE_HOURS || "48", 10);
 
 // Optional secret for debug endpoints. If set, requests must include ?secret=VALUE
 const DEBUG_SECRET = process.env.DEBUG_SECRET || null;
@@ -136,7 +137,6 @@ function mapItem(item, sectionLabel) {
     const e  = item.index       != null ? "E" + String(item.index).padStart(2, "0")       : "";
     subtitle = [s + e, item.title].filter(Boolean).join(" - ");
     thumb    = item.grandparentThumb || item.parentThumb || item.thumb;
-    // For episodes, deep-link to the episode itself
     ratingKey = item.ratingKey || null;
   } else if (type === "season") {
     title    = item.parentTitle || item.title;
@@ -169,13 +169,13 @@ function mapItem(item, sectionLabel) {
 
 function emojiForSection(label) {
   const l = label.toLowerCase();
-  if (l.includes("anime"))                            return "⛩️";
-  if (l.includes("cartoon"))                          return "🎨";
-  if (l.includes("sport"))                            return "⚽";
-  if (l.includes("music"))                            return "🎵";
-  if (l.includes("movie") || l.includes("film"))      return "🎬";
-  if (l.includes("tv") || l.includes("show") || l.includes("series")) return "📺";
-  if (l.includes("photo"))                            return "📷";
+  if (l.includes("anime"))                                              return "⛩️";
+  if (l.includes("cartoon"))                                            return "🎨";
+  if (l.includes("sport"))                                              return "⚽";
+  if (l.includes("music"))                                              return "🎵";
+  if (l.includes("movie") || l.includes("film"))                       return "🎬";
+  if (l.includes("tv") || l.includes("show") || l.includes("series"))  return "📺";
+  if (l.includes("photo"))                                              return "📷";
   return "🎞️";
 }
 
@@ -272,15 +272,27 @@ function buildPlexDeepLink(ratingKey, machineId) {
   return `${PLEX_URL}/web/index.html#!/server/${machineId}/details?key=${encodeURIComponent(`/library/metadata/${ratingKey}`)}`;
 }
 
-function renderCard(item, proxyBase, machineId) {
-  const imgSrc = item.thumbPath
+function isNew(addedAt) {
+  if (!addedAt || NEW_BADGE_HOURS <= 0) return false;
+  const ageMs = Date.now() - (addedAt * 1000);
+  return ageMs < NEW_BADGE_HOURS * 60 * 60 * 1000;
+}
+
+function renderCard(item, proxyBase, machineId, showBadge) {
+  const imgSrc   = item.thumbPath
     ? `${proxyBase}/thumb?path=${encodeURIComponent(item.thumbPath)}`
     : `${proxyBase}/placeholder`;
 
   const deepLink = PLEX_CLICKTHROUGH ? buildPlexDeepLink(item.ratingKey, machineId) : null;
+  const newBadge = (showBadge && isNew(item.addedAt))
+    ? `<span class="badge-new">NEW</span>`
+    : "";
 
   const inner = `
-    <img src="${escapeHtml(imgSrc)}" alt="" loading="lazy" onerror="this.src='${proxyBase}/placeholder'">
+    <div class="poster-wrap">
+      <img src="${escapeHtml(imgSrc)}" alt="" loading="lazy" onerror="this.src='${proxyBase}/placeholder'">
+      ${newBadge}
+    </div>
     <div class="info">
       <div class="title" title="${escapeHtml(item.title)}">${escapeHtml(item.title)}</div>
       ${item.subtitle ? `<div class="subtitle" title="${escapeHtml(item.subtitle)}">${escapeHtml(item.subtitle)}</div>` : ""}
@@ -301,13 +313,14 @@ function renderCard(item, proxyBase, machineId) {
 
 function renderSection(label, items, proxyBase, machineId) {
   if (!items.length) return "";
-  const emoji = label === "On Deck" ? "▶️" : emojiForSection(label);
+  const emoji     = label === "On Deck" ? "▶️" : emojiForSection(label);
+  const showBadge = label !== "On Deck"; // badges only on recently added rows
 
   return `
 <section>
   <h2>${emoji} ${escapeHtml(label)}</h2>
   <div class="grid">
-    ${items.map(i => renderCard(i, proxyBase, machineId)).join("")}
+    ${items.map(i => renderCard(i, proxyBase, machineId, showBadge)).join("")}
   </div>
 </section>`;
 }
@@ -367,6 +380,11 @@ function buildHTML(recentSections, onDeckItems, proxyBase, machineId) {
       cursor: default;
       display: block;
     }
+    .poster-wrap {
+      position: relative;
+      width: 80px;
+      height: 120px;
+    }
     .card img {
       width: 80px;
       height: 120px;
@@ -375,6 +393,20 @@ function buildHTML(recentSections, onDeckItems, proxyBase, machineId) {
       background: #1f2937;
       display: block;
       transition: opacity 0.2s ease, transform 0.2s ease;
+    }
+    .badge-new {
+      position: absolute;
+      top: 5px;
+      left: 5px;
+      background: #e8b04b;
+      color: #000;
+      font-size: 8px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      padding: 2px 5px;
+      border-radius: 3px;
+      line-height: 1.4;
+      pointer-events: none;
     }
     .info { margin-top: 5px; }
     .title {
@@ -538,12 +570,13 @@ const server = http.createServer(async (req, res) => {
     setSecurityHeaders(res);
     res.writeHead(200, { "Content-Type": "application/json" });
     res.end(JSON.stringify({
-      status: "ok",
-      uptime: Math.floor(process.uptime()),
-      plex:   PLEX_URL,
+      status:  "ok",
+      uptime:  Math.floor(process.uptime()),
+      plex:    PLEX_URL,
       features: {
-        clickthrough: PLEX_CLICKTHROUGH,
-        onDeck:       SHOW_ON_DECK,
+        clickthrough:  PLEX_CLICKTHROUGH,
+        onDeck:        SHOW_ON_DECK,
+        newBadgeHours: NEW_BADGE_HOURS,
       },
     }));
     return;
@@ -564,5 +597,6 @@ server.listen(PORT, "0.0.0.0", () => {
   console.log(` -> Sections:      ${SECTIONS ? SECTIONS.join(", ") : "all"}`);
   console.log(` -> Click-through: ${PLEX_CLICKTHROUGH ? "enabled" : "disabled"}`);
   console.log(` -> On Deck:       ${SHOW_ON_DECK ? "enabled" : "disabled"}`);
+  console.log(` -> New badge:     ${NEW_BADGE_HOURS > 0 ? `${NEW_BADGE_HOURS}h window` : "disabled"}`);
   console.log(` -> Debug:         ${DEBUG_SECRET ? "enabled (secret required)" : "disabled"}`);
 });
