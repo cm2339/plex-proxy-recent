@@ -1,24 +1,37 @@
 # 🎬 Plex Recently Added
 
-A lightweight proxy that displays your Plex recently added media in [Homepage](https://gethomepage.dev) as a poster card iframe widget, split by library section.
+A lightweight proxy that displays your Plex recently added media in [Homepage](https://gethomepage.dev) as a poster card iframe widget, split by library section. Optionally shows an On Deck row and supports click-through links that open items directly in Plex Web.
 
 ## Features
 
 - Poster art with titles and subtitles
 - Separate row per Plex library (Movies, TV, Anime, Music, etc.)
+- **On Deck row** — shows in-progress media at the top (optional, off by default)
+- **Click-through to Plex** — clicking a poster opens that item directly in Plex Web (optional, off by default)
 - Configurable per-library filtering via section IDs
 - Secure by default — runs as non-root, read-only filesystem
 
 ## Preview
 
-<!-- optionally upload a screenshot to the repo and link it here -->
-<!-- ![Preview](https://raw.githubusercontent.com/yourname/yourrepo/main/preview.png) -->
+You can preview the widget at any time by visiting the `/ui` endpoint directly in your browser:
+
+```
+http://YOUR_HOST_IP:3051/ui
+```
+
+This is the same page that Homepage embeds as an iframe — useful for checking the layout, verifying posters load correctly, and confirming your section filtering before adding it to your dashboard.
 
 ## Usage
 
 ### 1. Find your Plex section IDs
 
-Temporarily add `DEBUG_SECRET` to your environment and visit: http://YOUR_HOST_IP:3051/debug-sections?secret=YOUR_SECRET
+Each Plex library has a numeric section ID. To find yours, temporarily add `DEBUG_SECRET` to your environment (see [Debug Endpoints](#debug-endpoints) below) and visit:
+
+```
+http://YOUR_HOST_IP:3051/debug-sections?secret=YOUR_SECRET
+```
+
+This returns a JSON list of all your libraries with their IDs, titles, and types. Once you have the IDs you want, add them to the `SECTIONS` variable and remove or comment out `DEBUG_SECRET`.
 
 ### 2. docker-compose.yml
 
@@ -32,8 +45,10 @@ services:
       - PLEX_URL=http://YOUR_PLEX_IP:32400
       - PLEX_TOKEN=YOUR_PLEX_TOKEN
       - LIMIT=10
-      - SECTIONS=1,2,3        # comma-separated section IDs
-      #- DEBUG_SECRET=         # optional, enables debug endpoints
+      - SECTIONS=1,2,3          # comma-separated section IDs
+      #- PLEX_CLICKTHROUGH=true  # optional: clicking a poster opens it in Plex Web
+      #- SHOW_ON_DECK=true       # optional: show an On Deck row above recently added
+      #- DEBUG_SECRET=           # optional: enables debug endpoints when set
     ports:
       - "3051:3001"
     networks:
@@ -77,15 +92,49 @@ networks:
 | `LIMIT` | ❌ | `10` | Max items shown per section |
 | `SECTIONS` | ❌ | all | Comma-separated library section IDs to include |
 | `PORT` | ❌ | `3001` | Internal port the proxy listens on |
-| `DEBUG_SECRET` | ❌ | disabled | Enables `/debug` and `/debug-sections` endpoints when set |
+| `PLEX_CLICKTHROUGH` | ❌ | `false` | Set to `true` to make posters link directly to that item in Plex Web |
+| `SHOW_ON_DECK` | ❌ | `false` | Set to `true` to show an ▶️ On Deck row above recently added sections |
+| `DEBUG_SECRET` | ❌ | disabled | Enables debug endpoints when set — remove after initial setup |
+
+## Debug Endpoints
+
+Debug endpoints are **disabled by default**. They are only active when `DEBUG_SECRET` is set, and every request must include the secret as a query parameter. Remove or comment out `DEBUG_SECRET` once your setup is complete.
+
+### `/debug-sections`
+
+Returns a JSON list of all your Plex libraries with their section IDs. Use this to find the IDs for the `SECTIONS` variable.
+
+```
+http://YOUR_HOST_IP:3051/debug-sections?secret=YOUR_SECRET
+```
+
+Example response:
+```json
+[
+  { "id": "1", "title": "Movies", "type": "movie" },
+  { "id": "2", "title": "TV Shows", "type": "show" },
+  { "id": "3", "title": "Music", "type": "artist" }
+]
+```
+
+### `/debug`
+
+Returns raw recently added metadata from Plex. Useful for inspecting what fields are available or troubleshooting missing posters and titles.
+
+```
+http://YOUR_HOST_IP:3051/debug?secret=YOUR_SECRET
+```
 
 ## Finding your Plex Token
 
-Open Plex Web → any media item → ⋮ → Get Info → View XML → copy `X-Plex-Token` from the URL.
+Open Plex Web → any media item → ⋮ → **Get Info** → **View XML** → copy the `X-Plex-Token` value from the URL.
 
 ## Network
 
 The container must share a Docker network with Homepage. Check your network name with:
+
 ```bash
 docker network ls | grep homepage
 ```
+
+If Homepage is running under a different network name, update the `name:` field under `networks` in the compose file to match.
