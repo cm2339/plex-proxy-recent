@@ -60,10 +60,11 @@ services:
       - NET_BIND_SERVICE
 
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:3001/health"]
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3001/health', r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"]
       interval: 30s
       timeout: 5s
-      retries: 3      
+      retries: 3
+      start_period: 10s         
 
 networks:
   homepage_net:
