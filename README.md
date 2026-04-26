@@ -45,10 +45,8 @@ services:
       - PLEX_URL=http://YOUR_PLEX_IP:32400
       - PLEX_TOKEN=YOUR_PLEX_TOKEN
       - LIMIT=10
-      - SECTIONS=1,2,3          # comma-separated section IDs
-      #- PLEX_CLICKTHROUGH=true  # optional: clicking a poster opens it in Plex Web
-      #- SHOW_ON_DECK=true       # optional: show an On Deck row above recently added
-      #- DEBUG_SECRET=           # optional: enables debug endpoints when set
+      - SECTIONS=1,2,3        # comma-separated section IDs
+      #- DEBUG_SECRET=         # optional, enables debug endpoints
     ports:
       - "3051:3001"
     networks:
@@ -60,6 +58,12 @@ services:
       - ALL
     cap_add:
       - NET_BIND_SERVICE
+
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3      
 
 networks:
   homepage_net:
