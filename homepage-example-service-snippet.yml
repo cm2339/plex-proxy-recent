@@ -1,0 +1,11 @@
+- Media:
+    - Plex Recently Added:
+        icon: plex.png
+        href: http://YOUR_PLEX_IP:32400/web
+        description: Latest movies, shows & music
+        widget:
+          type: iframe
+          src: http://YOUR_HOST_IP:3051/ui
+          classes: h-96
+          referrerPolicy: same-origin
+          allowFullscreen: false
