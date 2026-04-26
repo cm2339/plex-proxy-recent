@@ -532,6 +532,23 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // ── /health ───────────────────────────────────────────────────
+
+  if (path === "/health") {
+    setSecurityHeaders(res);
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({
+      status: "ok",
+      uptime: Math.floor(process.uptime()),
+      plex:   PLEX_URL,
+      features: {
+        clickthrough: PLEX_CLICKTHROUGH,
+        onDeck:       SHOW_ON_DECK,
+      },
+    }));
+    return;
+  }
+
   // ── 404 ──────────────────────────────────────────────────────
 
   setSecurityHeaders(res);

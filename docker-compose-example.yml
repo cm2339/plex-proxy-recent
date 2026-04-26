@@ -21,6 +21,12 @@ services:
     cap_add:
       - NET_BIND_SERVICE
 
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3      
+
 networks:
   homepage_net:
     external: true
