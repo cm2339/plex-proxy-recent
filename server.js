@@ -42,7 +42,7 @@ async function getPlexMachineId() {
 // ─── Rate limiting ────────────────────────────────────────────────────────────
 
 const rateLimitMap = new Map();
-const RATE_LIMIT  = 30;
+const RATE_LIMIT  = 200;
 const RATE_WINDOW = 60_000;
 
 function isRateLimited(ip) {
