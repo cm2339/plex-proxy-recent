@@ -10,9 +10,10 @@ const SECTIONS = process.env.SECTIONS
   : null;
 
 // Feature flags
-const PLEX_CLICKTHROUGH = (process.env.PLEX_CLICKTHROUGH || "false").toLowerCase() === "true";
-const SHOW_ON_DECK      = (process.env.SHOW_ON_DECK      || "false").toLowerCase() === "true";
-const NEW_BADGE_HOURS   = parseInt(process.env.NEW_BADGE_HOURS || "48", 10);
+const PLEX_CLICKTHROUGH  = (process.env.PLEX_CLICKTHROUGH || "false").toLowerCase() === "true";
+const SHOW_ON_DECK       = (process.env.SHOW_ON_DECK      || "false").toLowerCase() === "true";
+const NEW_BADGE_HOURS    = parseInt(process.env.NEW_BADGE_HOURS    || "48", 10);
+const REFRESH_INTERVAL   = parseInt(process.env.REFRESH_INTERVAL   || "0",  10); // seconds, 0 = disabled
 
 // Optional secret for debug endpoints. If set, requests must include ?secret=VALUE
 const DEBUG_SECRET = process.env.DEBUG_SECRET || null;
@@ -332,6 +333,10 @@ function buildHTML(recentSections, onDeckItems, proxyBase, machineId) {
     .card:hover .title { color: #e8b04b; }
   ` : "";
 
+  const refreshMeta = (REFRESH_INTERVAL > 0)
+    ? `<meta http-equiv="refresh" content="${REFRESH_INTERVAL}">`
+    : "";
+
   const onDeckHTML = (SHOW_ON_DECK && onDeckItems.length)
     ? renderSection("On Deck", onDeckItems, proxyBase, machineId)
     : "";
@@ -346,6 +351,7 @@ function buildHTML(recentSections, onDeckItems, proxyBase, machineId) {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src 'self'; script-src 'none'; connect-src 'none';">
+  ${refreshMeta}
   <title>Recently Added</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -574,9 +580,10 @@ const server = http.createServer(async (req, res) => {
       uptime:  Math.floor(process.uptime()),
       plex:    PLEX_URL,
       features: {
-        clickthrough:  PLEX_CLICKTHROUGH,
-        onDeck:        SHOW_ON_DECK,
-        newBadgeHours: NEW_BADGE_HOURS,
+        clickthrough:    PLEX_CLICKTHROUGH,
+        onDeck:          SHOW_ON_DECK,
+        newBadgeHours:   NEW_BADGE_HOURS,
+        refreshInterval: REFRESH_INTERVAL,
       },
     }));
     return;
@@ -591,12 +598,13 @@ const server = http.createServer(async (req, res) => {
 
 server.listen(PORT, "0.0.0.0", () => {
   console.log(`plex-recently-added proxy running on port ${PORT}`);
-  console.log(` -> Plex:          ${PLEX_URL}`);
-  console.log(` -> UI:            http://localhost:${PORT}/ui`);
-  console.log(` -> Limit:         ${LIMIT} items per section`);
-  console.log(` -> Sections:      ${SECTIONS ? SECTIONS.join(", ") : "all"}`);
-  console.log(` -> Click-through: ${PLEX_CLICKTHROUGH ? "enabled" : "disabled"}`);
-  console.log(` -> On Deck:       ${SHOW_ON_DECK ? "enabled" : "disabled"}`);
-  console.log(` -> New badge:     ${NEW_BADGE_HOURS > 0 ? `${NEW_BADGE_HOURS}h window` : "disabled"}`);
-  console.log(` -> Debug:         ${DEBUG_SECRET ? "enabled (secret required)" : "disabled"}`);
+  console.log(` -> Plex:            ${PLEX_URL}`);
+  console.log(` -> UI:              http://localhost:${PORT}/ui`);
+  console.log(` -> Limit:           ${LIMIT} items per section`);
+  console.log(` -> Sections:        ${SECTIONS ? SECTIONS.join(", ") : "all"}`);
+  console.log(` -> Click-through:   ${PLEX_CLICKTHROUGH ? "enabled" : "disabled"}`);
+  console.log(` -> On Deck:         ${SHOW_ON_DECK ? "enabled" : "disabled"}`);
+  console.log(` -> New badge:       ${NEW_BADGE_HOURS > 0 ? `${NEW_BADGE_HOURS}h window` : "disabled"}`);
+  console.log(` -> Refresh:         ${REFRESH_INTERVAL > 0 ? `every ${REFRESH_INTERVAL}s` : "disabled"}`);
+  console.log(` -> Debug:           ${DEBUG_SECRET ? "enabled (secret required)" : "disabled"}`);
 });

@@ -106,6 +106,7 @@ networks:
 | `SHOW_ON_DECK` | ❌ | `false` | Set to `true` to show an ▶️ On Deck row above recently added sections |
 | `NEW_BADGE_HOURS` | ❌ | `48` | Hours after which the NEW badge disappears. Set to `0` to disable entirely |
 | `DEBUG_SECRET` | ❌ | disabled | Enables debug endpoints when set — remove after initial setup |
+| REFRESH_INTERVAL | ❌ | 0 | Auto-refresh interval in seconds. Set to e.g. 300 for every 5 minutes. 0 disables. |
 
 ## Debug Endpoints
 
