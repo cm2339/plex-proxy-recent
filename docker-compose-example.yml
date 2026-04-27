@@ -11,6 +11,7 @@ services:
       #- DEBUG_SECRET=         # optional, enables debug endpoints
       #- NEW_BADGE_HOURS=48   # default 48h — set to 0 to disable entirely
       #- REFRESH_INTERVAL=300   # auto-refresh every 5 minutes (0 = disabled)
+      #- SHOW_PROGRESS_BAR=true   # default true — set to false to hide progress bars on On Deck
     ports:
       - "3051:3001"
     networks:

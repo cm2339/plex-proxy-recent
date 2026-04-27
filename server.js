@@ -10,10 +10,11 @@ const SECTIONS = process.env.SECTIONS
   : null;
 
 // Feature flags
-const PLEX_CLICKTHROUGH  = (process.env.PLEX_CLICKTHROUGH || "false").toLowerCase() === "true";
-const SHOW_ON_DECK       = (process.env.SHOW_ON_DECK      || "false").toLowerCase() === "true";
-const NEW_BADGE_HOURS    = parseInt(process.env.NEW_BADGE_HOURS    || "48", 10);
-const REFRESH_INTERVAL   = parseInt(process.env.REFRESH_INTERVAL   || "0",  10); // seconds, 0 = disabled
+const PLEX_CLICKTHROUGH  = (process.env.PLEX_CLICKTHROUGH  || "false").toLowerCase() === "true";
+const SHOW_ON_DECK       = (process.env.SHOW_ON_DECK       || "false").toLowerCase() === "true";
+const NEW_BADGE_HOURS    = parseInt(process.env.NEW_BADGE_HOURS   || "48", 10);
+const REFRESH_INTERVAL   = parseInt(process.env.REFRESH_INTERVAL  || "0",  10); // seconds, 0 = disabled
+const SHOW_PROGRESS_BAR  = (process.env.SHOW_PROGRESS_BAR  || "true").toLowerCase()  === "true";
 
 // Optional secret for debug endpoints. If set, requests must include ?secret=VALUE
 const DEBUG_SECRET = process.env.DEBUG_SECRET || null;
@@ -157,6 +158,13 @@ function mapItem(item, sectionLabel) {
     thumb    = item.thumb;
   }
 
+  // Progress: viewOffset and duration are in milliseconds
+  const viewOffset = item.viewOffset || 0;
+  const duration   = item.duration   || 0;
+  const progress   = (duration > 0 && viewOffset > 0)
+    ? Math.min(100, Math.round((viewOffset / duration) * 100))
+    : 0;
+
   return {
     title,
     subtitle,
@@ -165,6 +173,7 @@ function mapItem(item, sectionLabel) {
     thumbPath:  thumb     || null,
     ratingKey:  ratingKey || null,
     addedAt:    item.addedAt || 0,
+    progress,   // 0-100, only meaningful for On Deck items
   };
 }
 
@@ -279,20 +288,26 @@ function isNew(addedAt) {
   return ageMs < NEW_BADGE_HOURS * 60 * 60 * 1000;
 }
 
-function renderCard(item, proxyBase, machineId, showBadge) {
+function renderCard(item, proxyBase, machineId, showBadge, showProgress) {
   const imgSrc   = item.thumbPath
     ? `${proxyBase}/thumb?path=${encodeURIComponent(item.thumbPath)}`
     : `${proxyBase}/placeholder`;
 
   const deepLink = PLEX_CLICKTHROUGH ? buildPlexDeepLink(item.ratingKey, machineId) : null;
+
   const newBadge = (showBadge && isNew(item.addedAt))
     ? `<span class="badge-new">NEW</span>`
+    : "";
+
+  const progressBar = (showProgress && SHOW_PROGRESS_BAR && item.progress > 0)
+    ? `<div class="progress-track"><div class="progress-fill" style="width:${item.progress}%"></div></div>`
     : "";
 
   const inner = `
     <div class="poster-wrap">
       <img src="${escapeHtml(imgSrc)}" alt="" loading="lazy" onerror="this.src='${proxyBase}/placeholder'">
       ${newBadge}
+      ${progressBar}
     </div>
     <div class="info">
       <div class="title" title="${escapeHtml(item.title)}">${escapeHtml(item.title)}</div>
@@ -314,14 +329,15 @@ function renderCard(item, proxyBase, machineId, showBadge) {
 
 function renderSection(label, items, proxyBase, machineId) {
   if (!items.length) return "";
-  const emoji     = label === "On Deck" ? "▶️" : emojiForSection(label);
-  const showBadge = label !== "On Deck"; // badges only on recently added rows
+  const emoji       = label === "On Deck" ? "▶️" : emojiForSection(label);
+  const showBadge   = label !== "On Deck"; // NEW badge only on recently added
+  const showProgress = label === "On Deck"; // progress bar only on On Deck
 
   return `
 <section>
   <h2>${emoji} ${escapeHtml(label)}</h2>
   <div class="grid">
-    ${items.map(i => renderCard(i, proxyBase, machineId, showBadge)).join("")}
+    ${items.map(i => renderCard(i, proxyBase, machineId, showBadge, showProgress)).join("")}
   </div>
 </section>`;
 }
@@ -413,6 +429,22 @@ function buildHTML(recentSections, onDeckItems, proxyBase, machineId) {
       border-radius: 3px;
       line-height: 1.4;
       pointer-events: none;
+    }
+    .progress-track {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: rgba(0,0,0,0.5);
+      border-radius: 0 0 6px 6px;
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      background: #e8b04b;
+      border-radius: 0 0 0 6px;
+      min-width: 2px;
     }
     .info { margin-top: 5px; }
     .title {
@@ -582,6 +614,7 @@ const server = http.createServer(async (req, res) => {
       features: {
         clickthrough:    PLEX_CLICKTHROUGH,
         onDeck:          SHOW_ON_DECK,
+        progressBar:     SHOW_PROGRESS_BAR,
         newBadgeHours:   NEW_BADGE_HOURS,
         refreshInterval: REFRESH_INTERVAL,
       },
@@ -604,6 +637,7 @@ server.listen(PORT, "0.0.0.0", () => {
   console.log(` -> Sections:        ${SECTIONS ? SECTIONS.join(", ") : "all"}`);
   console.log(` -> Click-through:   ${PLEX_CLICKTHROUGH ? "enabled" : "disabled"}`);
   console.log(` -> On Deck:         ${SHOW_ON_DECK ? "enabled" : "disabled"}`);
+  console.log(` -> Progress bar:    ${SHOW_PROGRESS_BAR ? "enabled" : "disabled"}`);
   console.log(` -> New badge:       ${NEW_BADGE_HOURS > 0 ? `${NEW_BADGE_HOURS}h window` : "disabled"}`);
   console.log(` -> Refresh:         ${REFRESH_INTERVAL > 0 ? `every ${REFRESH_INTERVAL}s` : "disabled"}`);
   console.log(` -> Debug:           ${DEBUG_SECRET ? "enabled (secret required)" : "disabled"}`);

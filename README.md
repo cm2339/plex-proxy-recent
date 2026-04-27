@@ -1,18 +1,21 @@
 # 🎬 Plex Recently Added
 
-A lightweight proxy that displays your Plex recently added media in [Homepage](https://gethomepage.dev) as a poster card iframe widget, split by library section. Optionally shows an On Deck row, click-through links to Plex Web, and a NEW badge on recently added posters.
+A lightweight proxy that displays your Plex recently added media in [Homepage](https://gethomepage.dev) as a poster card iframe widget, split by library section. Optionally shows an On Deck row, click-through links to Plex Web, a NEW badge on recent posters, and a progress bar on in-progress media.
 
 ## Features
 
 - Poster art with titles and subtitles
 - Separate row per Plex library (Movies, TV, Anime, Music, etc.)
 - **On Deck row** — shows in-progress media at the top (optional, off by default)
+- **Progress bar** — thin gold bar at the bottom of On Deck posters showing watch progress (optional, on by default when On Deck is enabled)
 - **Click-through to Plex** — clicking a poster opens that item directly in Plex Web (optional, off by default)
 - **NEW badge** — gold pill overlay on posters added within a configurable time window (optional, 48h by default)
+- **Auto-refresh** — configurable interval to reload the widget and pick up new content (optional, off by default)
 - Configurable per-library filtering via section IDs
 - `/health` endpoint for Docker and Homepage liveness checks
 - `/ui` endpoint to preview the widget directly in a browser
 - Secure by default — runs as non-root, read-only filesystem, rate limited
+- Multi-arch image — supports `linux/amd64` and `linux/arm64`
 
 ## Preview
 
@@ -48,11 +51,13 @@ services:
       - PLEX_URL=http://YOUR_PLEX_IP:32400
       - PLEX_TOKEN=YOUR_PLEX_TOKEN
       - LIMIT=10
-      - SECTIONS=1,2,3             # comma-separated section IDs
-      #- PLEX_CLICKTHROUGH=true    # optional: clicking a poster opens it in Plex Web
-      #- SHOW_ON_DECK=true         # optional: show an ▶️ On Deck row above recently added
-      #- NEW_BADGE_HOURS=48        # optional: gold NEW badge on recent posters (0 to disable)
-      #- DEBUG_SECRET=             # optional: enables debug endpoints when set
+      - SECTIONS=1,2,3              # comma-separated section IDs
+      #- PLEX_CLICKTHROUGH=true     # optional: clicking a poster opens it in Plex Web
+      #- SHOW_ON_DECK=true          # optional: show an ▶️ On Deck row above recently added
+      #- SHOW_PROGRESS_BAR=true     # optional: show watch progress bar on On Deck posters (default true)
+      #- NEW_BADGE_HOURS=48         # optional: gold NEW badge on recent posters (0 to disable)
+      #- REFRESH_INTERVAL=300       # optional: auto-refresh in seconds (0 = disabled)
+      #- DEBUG_SECRET=              # optional: enables debug endpoints when set
     ports:
       - "3051:3001"
     networks:
@@ -104,9 +109,10 @@ networks:
 | `PORT` | ❌ | `3001` | Internal port the proxy listens on |
 | `PLEX_CLICKTHROUGH` | ❌ | `false` | Set to `true` to make posters link directly to that item in Plex Web |
 | `SHOW_ON_DECK` | ❌ | `false` | Set to `true` to show an ▶️ On Deck row above recently added sections |
+| `SHOW_PROGRESS_BAR` | ❌ | `true` | Set to `false` to hide the watch progress bar on On Deck posters |
 | `NEW_BADGE_HOURS` | ❌ | `48` | Hours after which the NEW badge disappears. Set to `0` to disable entirely |
+| `REFRESH_INTERVAL` | ❌ | `0` | Auto-refresh interval in seconds. Set to e.g. `300` for every 5 minutes. `0` disables |
 | `DEBUG_SECRET` | ❌ | disabled | Enables debug endpoints when set — remove after initial setup |
-| REFRESH_INTERVAL | ❌ | 0 | Auto-refresh interval in seconds. Set to e.g. 300 for every 5 minutes. 0 disables. |
 
 ## Debug Endpoints
 
