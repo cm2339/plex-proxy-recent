@@ -22,7 +22,7 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Build and push release tag
-        uses: docker/build-push-action@v6.15.0
+        uses: docker/build-push-action@v7.1.0
         with:
           context: .
           platforms: linux/amd64,linux/arm64
