@@ -1,6 +1,6 @@
 # 🎬 Plex Recently Added
 
-A lightweight proxy that displays your Plex recently added media in [Homepage](https://gethomepage.dev) as a poster card iframe widget, split by library section. Optionally shows an On Deck row, click-through links to Plex Web, a NEW badge on recent posters, and a progress bar on in-progress media.
+A lightweight, 100% vibe coded proxy that displays your Plex recently added media in [Homepage](https://gethomepage.dev) as a poster card iframe widget, split by library section. Optionally shows an On Deck row, click-through links to Plex Web, a NEW badge on recent posters, and a progress bar on in-progress media.
 
 ## Features
 
